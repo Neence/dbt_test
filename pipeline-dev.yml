@@ -1,0 +1,51 @@
+# https://aka.ms/yaml
+
+trigger: none
+
+pr:
+- development
+
+pool:
+  name: 'HISL Snowflake'
+
+variables:
+  target: ci
+  dbt_additional_flags_run: --models state:modified+ --defer --state /$(System.ArtifactsDirectory)/
+  dbt_additional_flags_test: --models state:modified+ --defer --state /$(System.ArtifactsDirectory)/
+
+steps:
+
+- task: DownloadBuildArtifacts@1
+  inputs:
+    buildType: 'specific'
+    project: '44684bff-6e4a-48ac-a2d0-7da54de3b8a5'
+    pipeline: '1457'
+    buildVersionToDownload: 'latest'
+    branchName: 'refs/heads/main'
+    downloadType: 'single'
+    artifactName: 'dbtManifest'
+    downloadPath: '$(System.ArtifactsDirectory)'
+
+- script: |
+    pip3 install dbt-snowflake==1.2.0
+  displayName: Install dbt python package
+
+- script: |
+    echo Coping profiles.yml to ~/.dbt
+    mkdir ~/.dbt
+    cp dbt/profiles.yml ~/.dbt/profiles.yml
+  displayName: Install dbt profile
+
+- script: |
+    cd dbt
+    dbt deps
+  displayName: dbt - install package dependencies
+
+- script: |
+    cd dbt
+    dbt run --target $(target)
+    dbt run-operation drop_pr_schema
+  displayName: dbt - run CI
+  env:
+    SNOWFLAKE_PASSWORD: $(snowflake_password)
+    DBT_CI_SCHEMA: DBT_CI_PR$(System.PullRequest.PullRequestNumber)
