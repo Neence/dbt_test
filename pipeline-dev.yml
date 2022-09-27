@@ -6,7 +6,7 @@ pr:
 - development
 
 pool:
-  name: 'HISL Snowflake'
+  name: 'dbt test'
 
 variables:
   target: ci
